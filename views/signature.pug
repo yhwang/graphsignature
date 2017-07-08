@@ -1,0 +1,245 @@
+html(lang='en')
+  head
+    meta(charset='utf-8')
+    title #{title}
+    script(src='http://d3js.org/d3.v3.min.js' charset='utf-8')
+    style.
+      .nodeInfoTD {
+        font: 14px verdana;
+        background:#C4DAFF;
+        white-space: nowrap;
+      }
+
+      .nodeInfoTR:nth-child(even){background-color: #f2f2f2}
+  body
+    div(id='nodeInfoDiv' style='display: block; position: fixed; overflow: hidden; background: #C4DAFF;')
+      table(id='nodeInfo' style='box-shadow:2px 2px 3px #805261; border-style: outset;')
+
+    div(id='edgeInfoDiv' style='display: block; position: fixed; overflow: hidden; background: #C4DAFF;')
+      table(id='edgeInfo' style='box-shadow:2px 2px 3px #805261; border-style: outset;')
+
+    table(id='main')
+      tr(width='800px' height='600px')
+        td(width='800px' height='600px')
+          div(id='graph' name='graph')
+
+    script(type='text/javascript').
+
+      var w = 800;
+      var h = 600;
+      var linkDistance=200;
+
+      var nodeInfoDiv = document.getElementById('nodeInfoDiv');
+      var edgeInfoDiv = document.getElementById('edgeInfoDiv');
+
+      window.onmousemove = function (e) {
+        var x = e.clientX;
+        var y = e.clientY;
+        nodeInfoDiv.style.top = (y + 20) + 'px';
+        nodeInfoDiv.style.left = (x + 20) + 'px';
+        edgeInfoDiv.style.top = (y + 20) + 'px';
+        edgeInfoDiv.style.left = (x + 20) + 'px';
+      };
+
+      var colors = d3.scale.category10();
+      var hideInfo = function(elemId, dataObj) {
+        //remove old data if there is
+        var infoTable = d3.select(elemId)
+          .selectAll('tr')
+          .remove();
+      };
+
+      var updateInfo = function(elemId, dataObj) {
+        console.error('elemId:' + elemId);
+        var nvPairs = [];
+        var counter = 0;
+        for (var name in dataObj) {
+          nvPairs.push( { name: name, value: dataObj[name]} );
+        }
+        var infoTable = d3.select(elemId);
+        var columns = [ 'name', 'value' ];
+
+        var rows = infoTable.selectAll('tr')
+                  .data(nvPairs)
+          .enter()
+          .append('tr');
+
+        var cells = rows.selectAll('td')
+         .data(function (row) {
+           return [ 
+                { name: row.name + ':', weight: 'bold', align: 'right'},
+                { name:row.value, weight: 'normal', align: 'left'}];
+           })
+          .enter()
+          .append('td')
+          .attr("class", "nodeInfoTD")
+          .style('font-weight', function(d) { return d.weight; })
+          .style('text-align', function(d) { return d.align;})
+          .text(function (d) { return d.name; });
+      };
+
+      var nodesData = { 
+        1: { 
+             Name: 'Yihong Wang',
+             Title: 'Software Engineer',
+             email: 'yh.wang@ibm.com'
+           },
+        2: { 
+             Company: 'IBM',
+             Lab: 'SVL',
+             'Phone#': '408-463-3061'
+           },
+        3: { Programing: 'Java', Special: 'GC tuning' },
+        4: { Programing: 'Nodejs', Special: 'Native API' },
+        5: { Department: 'OpenTechnology' },
+        6: { Like: 'Biking', Type: 'fixie' },
+        7: { Programing: 'C/C++' }
+      };
+
+      var nodesList = [
+        { name: 'Yihong Wang', nodeId: 1 },
+        { name: 'IBM', nodeId: 2 },
+        { name: 'Java', nodeId: 3 },
+        { name: 'Nodejs', nodeId: 4 },
+        { name: 'OpenTechnology', nodeId: 5 },
+        { name: 'Biking', nodeId: 6 },
+        { name: 'C/C++', nodeId: 7 }
+      ];
+
+      var edgesData = [
+        {source: 0, target: 4, name: 'work for', props: { prop1: 'prop1', prop2: 'prop2'}},
+        {source: 0, target: 2, name: 'expertise', props: { prop1: 'prop1', prop2: 'prop2'}},
+        {source: 0, target: 3, name: 'expertise', props: { prop1: 'prop1', prop2: 'prop2'}},
+        {source: 0, target: 6, name: 'expertise', props: { prop1: 'prop1', prop2: 'prop2'}},
+        {source: 4, target: 1, name: 'in', props: { prop1: 'prop1', prop2: 'prop2'}},
+        {source: 0, target: 5, name: 'like', props: { prop1: 'prop1', prop2: 'prop2'}}
+      ];
+
+      var svg = d3.select("#graph").append("svg").attr({"width":w,"height":h});
+
+      var force = d3.layout.force()
+        .nodes(nodesList)
+        .links(edgesData)
+        .size([w,h])
+        .linkDistance([linkDistance])
+        .charge([-500])
+        .theta(0.1)
+        .gravity(0.05)
+        .start();
+
+      var edges = svg.selectAll("line")
+        .data(edgesData)
+        .enter()
+        .append("line")
+        .attr("id",function(d,i) {return 'edge'+i})
+        .attr('marker-end','url(#arrowhead)')
+        .style("stroke","#ccc")
+        .style("pointer-events", "none");
+
+      var nodes = svg.selectAll("circle")
+        .data(nodesList)
+        .enter()
+        .append("circle")
+        .attr({"r":40})
+        .style("fill",function(d,i){return colors(i);})
+        .call(force.drag)
+
+
+      var nodelabels = svg.selectAll(".nodelabel") 
+       .data(nodesList)
+       .enter()
+       .append("text")
+       .attr({"x":function(d){return d.x;},
+              "y":function(d){return d.y;},
+              "class":"nodelabel",
+              "stroke":"black"
+            })
+       .on("mouseover",function(d){ return updateInfo('#nodeInfo', nodesData[d.nodeId]);})
+       .on("mouseout", function(d) { return hideInfo('#nodeInfo', nodesData[d.nodeId]);})
+       .style("font", "14px verdana")
+       .text(function(d){return d.name;});
+
+      var edgepaths = svg.selectAll(".edgepath")
+        .data(edgesData)
+        .enter()
+        .append('path')
+        .attr({'d': function(d) { return 'M '+ d.source.x+' '+d.source.y+' L '+ d.target.x +' '+d.target.y},
+               'class':'edgepath',
+               'fill-opacity':0,
+               'stroke-opacity':0,
+               'fill':'blue',
+               'stroke':'red',
+               'id':function(d,i) {return 'edgepath'+i}})
+        .style("pointer-events", "none")
+        .on("mouseover",function(d){ return updateInfo('#edgeInfo', d.props);})
+        .on("mouseout", function(d) { return hideInfo('#edgeInfo', d.props);});
+
+      var edgelabels = svg.selectAll(".edgelabel")
+        .data(edgesData)
+        .enter()
+        .append('text')
+        .style("pointer-events", "none")
+        .attr({'class':'edgelabel',
+               'id':function(d,i){return 'edgelabel'+i},
+               'dx':80,
+               'dy':0,
+               'font-size':14,
+               'font-weight': 'bold',
+               'fill':'#4B1ABD'});
+
+      edgelabels.append('textPath')
+        .attr('xlink:href',function(d,i) {return '#edgepath'+i})
+        .style("pointer-events", "none")
+        .on("mouseover",function(d){ return updateInfo('#edgeInfo', d.props);})
+        .on("mouseout", function(d) { return hideInfo('#edgeInfo', d.props);})
+        .text(function(d,i){return d.name});
+
+
+      svg.append('defs').append('marker')
+        .attr({'id':'arrowhead',
+               'viewBox':'-0 -5 10 10',
+               'refX':30,
+               'refY':0,
+               'markerUnits':'strokeWidth',
+               'orient':'auto',
+               'markerWidth':20,
+               'markerHeight':20,
+               'xoverflow':'visible'})
+        .append('svg:path')
+            .attr('d', 'M 0,-5 L 10 ,0 L 0,5')
+            .attr('fill', '#ccc')
+            .attr('stroke','#ccc');
+
+      force.on("tick", function(){
+
+        edges.attr({"x1": function(d){return d.source.x;},
+                    "y1": function(d){return d.source.y;},
+                    "x2": function(d){return d.target.x;},
+                    "y2": function(d){return d.target.y;}
+        });
+
+        nodes.attr({"cx":function(d){return d.x;},
+                    "cy":function(d){return d.y;}
+        });
+
+        nodelabels.attr("x", function(d) { return d.x - 20; }) 
+                  .attr("y", function(d) { return d.y + 8; });
+
+        edgepaths.attr('d', function(d) { var path='M '+d.source.x+' '+d.source.y+' L '+ d.target.x +' '+d.target.y;
+                                           //console.log(d)
+                                           return path});       
+
+        edgelabels.attr('transform',function(d,i){
+            if (d.target.x < d.source.x){
+                bbox = this.getBBox();
+                rx = bbox.x+bbox.width/2;
+                ry = bbox.y+bbox.height/2;
+                return 'rotate(180 '+rx+' '+ry+')';
+                }
+            else {
+                return 'rotate(0)';
+                }
+        });
+      });
+
+
