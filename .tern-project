@@ -1,0 +1,12 @@
+{
+  "libs": [
+    "body-parser",
+    "cfenv",
+    "dotenv",
+    "express",
+    "pug"
+  ],
+  "plugins": {
+    "node": {}
+  }
+}
